@@ -2,27 +2,32 @@ const express = require('express');
 const SpotifyWebApi = require('spotify-web-api-node')
 const cors = require('cors')
 const bodyParser = require('body-parser')
+const lyricsFinder = require('lyrics-finder')
 
 const app = express();
 app.use(cors())
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 
-app.post('/refresh', (req, res) => {
-    
+app.post('/refresh-authtoken', (req, res) => {
+
     const refreshToken = req.body.refreshToken;
-    console.log("Refresh.....", refreshToken)
+    console.log("refresh-authtoken.....", refreshToken)
     const spotifyApi = new SpotifyWebApi({
         redirectUri: 'http://localhost:3000',
-        clientId: '',
+        clientId: '3161af22a7714180bef6dbfe9a6fec9f',
         clientSecret: '',
+        refreshToken
     })
-    spotifyApi.setRefreshToken(refreshToken);
-    
+
     spotifyApi
         .refreshAccessToken()
         .then(data => {
-          console.log(data);
+            res.json({
+                accessToken: data.body.accessToken,
+                expiresIn: data.body.expiresIn
+            })
         })
         .catch((err) => {
             console.log(err);
@@ -30,13 +35,13 @@ app.post('/refresh', (req, res) => {
         })
 })
 
-app.post('/login',  (req, res) => {
-    console.log("Login.....")
+app.post('/auth-token', (req, res) => {
+    console.log("auth-token.....")
     const code = req.body.code;
-    spotifyApi.setRefreshToken(req.body.refreshToken);
+
     const spotifyApi = new SpotifyWebApi({
         redirectUri: 'http://localhost:3000',
-        clientId: '',
+        clientId: '3161af22a7714180bef6dbfe9a6fec9f',
         clientSecret: ''
     })
     spotifyApi.authorizationCodeGrant(code).then(data => {
@@ -46,10 +51,16 @@ app.post('/login',  (req, res) => {
             expiresIn: data.body.expires_in,
         })
     })
-    .catch(error => {
-        console.log(error)
-        res.sendStatus(400)
-    })
+        .catch(error => {
+            console.log(error)
+            res.sendStatus(400)
+        })
+})
+
+app.get('/lyrics', async (req, res) => {
+    const lyrics = await lyricsFinder(req.query.artist, req.query.track)
+        || "No lyrics found"
+    res.json({ lyrics })
 })
 
 
